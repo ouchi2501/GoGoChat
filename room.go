@@ -4,49 +4,68 @@ import (
 	"log"
 	"net/http"
 
+	"trace"
+
 	"github.com/gorilla/websocket"
 )
 
 type room struct {
-	// forward is message quere
+
+	// forward is a channel that holds incoming messages
+	// that should be forwarded to the other clients.
 	forward chan []byte
-	// join is entry chatroom client canel
+
+	// join is a channel for clients wishing to join the room.
 	join chan *client
-	// leave is chatroom is leave client
+
+	// leave is a channel for clients wishing to leave the room.
 	leave chan *client
-	// clients is all client
+
+	// clients holds all current clients in this room.
 	clients map[*client]bool
+
+	// tracer will receive trace information of activity
+	// in the room.
+	tracer trace.Tracer
 }
 
+// newRoom makes a new room that is ready to
+// go.
 func newRoom() *room {
 	return &room{
 		forward: make(chan []byte),
 		join:    make(chan *client),
 		leave:   make(chan *client),
 		clients: make(map[*client]bool),
+		tracer:  trace.Off(),
 	}
-
 }
 
 func (r *room) run() {
 	for {
 		select {
 		case client := <-r.join:
-			// join
+			// joining
 			r.clients[client] = true
+			r.tracer.Trace("New client joined")
 		case client := <-r.leave:
-			// leave
+			// leaving
 			delete(r.clients, client)
 			close(client.send)
+			r.tracer.Trace("Client left")
 		case msg := <-r.forward:
-			// all clients send message
+			r.tracer.Trace("Message received: ", string(msg))
+			// forward message to all clients
 			for client := range r.clients {
 				select {
 				case client.send <- msg:
-					// send message
+					// send the message
+					r.tracer.Trace(" -- sent to client")
 				default:
+					// failed to send
 					delete(r.clients, client)
 					close(client.send)
+					r.tracer.Trace(" -- failed to send, cleaned up client")
 				}
 			}
 		}

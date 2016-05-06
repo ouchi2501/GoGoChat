@@ -2,21 +2,23 @@ package main
 
 import (
 	"flag"
-	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
+	"text/template"
+	"trace"
 )
 
-// templ is once template
+// templ represents a single template
 type templateHandler struct {
 	once     sync.Once
 	filename string
 	templ    *template.Template
 }
 
-// serveHTTP is job to HTTP Request
+// ServeHTTP handles the HTTP request.
 func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.once.Do(func() {
 		t.templ = template.Must(template.ParseFiles(filepath.Join("templates", t.filename)))
@@ -25,17 +27,22 @@ func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	var addr = flag.String("addr", ":8080", "application addr")
-	flag.Parse()
+	var addr = flag.String("addr", ":8080", "The addr of the application.")
+	flag.Parse() // parse the flags
+
 	r := newRoom()
-	// root
-	http.Handle("/", &templateHandler{filename: "chat.html"})
+	r.tracer = trace.New(os.Stdout)
+
+	http.Handle("/chat", MustAuth(&templateHandler{filename:"chat.html"}))
 	http.Handle("/room", r)
-	// started chatRoom
+
+	// get the room going
 	go r.run()
-	// started webServer
-	log.Println("started web server... port", *addr)
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+
+	// start the web server
+	log.Println("Starting web server on", *addr)
+	if err := http.ListenAndServe(*addr, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
+
 }
