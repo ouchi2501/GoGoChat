@@ -12,7 +12,6 @@ import (
 
 	"github.com/stretchr/gomniauth"
 	"github.com/stretchr/gomniauth/providers/facebook"
-	"github.com/stretchr/gomniauth/providers/github"
 	"github.com/stretchr/gomniauth/providers/google"
 )
 
@@ -40,7 +39,6 @@ func main() {
 	gomniauth.WithProviders(
 		facebook.New("915868081849961", "b4c82c62f1427f21293e0b98bf266982", "https://localhost:8080/auth/callback/facebook"),
 		google.New("874314700045-oua6utr03bphq335e08ae5onvv07c5do.apps.googleusercontent.com", "8KgAYO-tKdwE6ZKjzp6t_Gbt", "http://localhost:8080/auth/callback/google"),
-		github.New("", "", ""),
 	)
 
 	r := newRoom()
