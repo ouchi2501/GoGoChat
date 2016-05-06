@@ -9,6 +9,11 @@ import (
 	"sync"
 	"text/template"
 	"trace"
+
+	"github.com/stretchr/gomniauth"
+	"github.com/stretchr/gomniauth/providers/facebook"
+	"github.com/stretchr/gomniauth/providers/github"
+	"github.com/stretchr/gomniauth/providers/google"
 )
 
 // templ represents a single template
@@ -30,10 +35,20 @@ func main() {
 	var addr = flag.String("addr", ":8080", "The addr of the application.")
 	flag.Parse() // parse the flags
 
+	// setup gomniauth
+	gomniauth.SetSecurityKey("SecurityKey")
+	gomniauth.WithProviders(
+		facebook.New("915868081849961", "b4c82c62f1427f21293e0b98bf266982", "https://localhost:8080/auth/callback/facebook"),
+		google.New("874314700045-oua6utr03bphq335e08ae5onvv07c5do.apps.googleusercontent.com", "8KgAYO-tKdwE6ZKjzp6t_Gbt", "http://localhost:8080/auth/callback/google"),
+		github.New("", "", ""),
+	)
+
 	r := newRoom()
 	r.tracer = trace.New(os.Stdout)
 
-	http.Handle("/chat", MustAuth(&templateHandler{filename:"chat.html"}))
+	http.Handle("/chat", MustAuth(&templateHandler{filename: "chat.html"}))
+	http.Handle("/login", &templateHandler{filename: "login.html"})
+	http.HandleFunc("/auth/", loginHandler)
 	http.Handle("/room", r)
 
 	// get the room going
